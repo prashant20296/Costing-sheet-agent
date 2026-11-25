@@ -1,0 +1,20 @@
+# Customer data never goes to GitHub
+data/raw/*
+!data/raw/.gitkeep
+# parser outputs hold customer names, rates and totals
+data/interim/
+data/processed/
+*.csv
+*.json
+!pyproject.json
+outputs/*
+!outputs/.gitkeep
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.pdf
+__pycache__/
+.venv/
+.pytest_cache/
+*.egg-info/
