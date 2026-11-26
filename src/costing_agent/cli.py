@@ -40,7 +40,8 @@ def _summary_row(inq: dict, parsed, offer, rec) -> dict:
     best = best or next((s for s in costed if s.final_total), None)
     offer_total = (sum(it.total or 0 for it in offer.items) if offer and offer.items else
                    (offer.grand_totals[0] if offer and offer.grand_totals else None))
-    gaps = [m.gap_pct for m in rec.matches if m.gap_pct is not None] if rec else []
+    all_m = (rec.matches + ([rec.total_match] if rec.total_match else [])) if rec else []
+    gaps = [m.gap_pct for m in all_m if m.gap_pct is not None]
     return {
         "inquiry_id": inq["inquiry_id"], "customer": inq.get("customer"), "status": "ok", "error": "",
         "costing": inq["primary_costing"], "offer": inq.get("primary_offer") or "",

@@ -24,6 +24,7 @@ class Reconciliation:
     matches: list[Match] = field(default_factory=list)
     explained_share_pct: float | None = None
     best_scenario: str | None = None
+    total_match: Match | None = None
 
 
 def _candidates(parsed: ParsedCosting) -> list[tuple[str, float]]:
@@ -61,7 +62,18 @@ def reconcile(parsed: ParsedCosting, offer: Offer, tolerance_pct: float = 6.0) -
     is_options = any(re.match(r"\s*option", it.description, re.I) for it in offer.items)
     if offer.items and not is_options and additive_total:
         rec.explained_share_pct = round(explained / additive_total * 100, 1)
+        # whole-offer check: one costing tab may price the entire offer (12016 pattern)
+    offer_sum = sum(it.total or 0 for it in offer.items)
+    if offer_sum and not is_options:
+        best = min(cands, key=lambda c: abs(c[1] - offer_sum), default=None)
+        if best:
+            gap = abs(best[1] - offer_sum) / offer_sum * 100
+            if gap <= tolerance_pct:
+                rec.total_match = Match("OFFER TOTAL", offer_sum, best[0], best[1], round(gap, 2))
+                rec.explained_share_pct = 100.0
     ok = [m for m in rec.matches if m.best_source]
     if ok:
         rec.best_scenario = min(ok, key=lambda m: m.gap_pct).best_source
+    elif rec.total_match:
+        rec.best_scenario = rec.total_match.best_source
     return rec
