@@ -15,6 +15,8 @@ from costing_agent.manifest import FileRow, _pick, id_from_name, label_from_name
     ("141-IU-251-00001 - LOT-4 INSTRUMENT SUPPORT TYPICALS.pdf", "typicals_drawing"),
     ("frame.dwg", "drawing"),
     ("RE inquiry.msg", "correspondence"),
+    ("12641_R0_Price sheet.xlsx", "costing_sheet"),
+    ("UEM_12755_R0_Offer.xlsx", "offer_letter"),
 ])
 def test_labels(name, label):
     assert label_from_name(name) == label

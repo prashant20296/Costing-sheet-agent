@@ -10,3 +10,5 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+[project.scripts]
+costing-agent = "costing_agent.cli:main"

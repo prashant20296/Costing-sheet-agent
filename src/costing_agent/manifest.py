@@ -24,8 +24,8 @@ DOC_EXT = {".pdf", ".xlsx", ".xlsm", ".xls", ".docx", ".doc", ".msg", ".eml", ".
 
 # filename rules, first match wins: (label, regex on lower-case name, allowed extensions or None)
 NAME_RULES = [
-    ("costing_sheet", r"costing|estimation\s*sheet|price\s*summary|cost\s*sheet|pricing", {".xlsx", ".xlsm", ".xls"}),
-    ("offer_letter", r"techno\s*-?\s*commercial|commercial\s*(proposal|offer)|\boffer\b|quotation|\bqtn\b", None),
+    ("costing_sheet", r"costing|estimation\s*sheet|price\s*summary|cost\s*sheet|pricing|price\s*sheet", {".xlsx", ".xlsm", ".xls"}),
+    ("offer_letter", r"techno\s*-?\s*commercial|commercial\s*(proposal|offer)|(?<![a-z])offer(?![a-z])|quotation|\bqtn\b", None),
     ("technical_proposal", r"technical\s*proposal|tech\.?\s*proposal", None),
     ("weight_workbook", r"weight|weightage|tonnage", {".xlsx", ".xlsm", ".xls"}),
     ("mto", r"(?<![a-z])mto(?![a-z])|material\s*take\s*-?\s*off", None),
@@ -157,6 +157,8 @@ def scan_folder(inquiry_id: str, folder: Path) -> list[FileRow]:
             label=label_from_name(p.name), is_cad=ext in CAD_EXT, rev=rev_from_name(p.name),
             id_in_name=id_from_name(p.name),
         )
+        if f.label == "other" and ext in (".xlsx", ".xlsm") and re.search(r"costing", p.parent.name, re.I):
+            f.label, f.label_source = "costing_sheet", "folder_name"
         flags = []
         if f.id_in_name and f.id_in_name != inquiry_id and f.label in ("costing_sheet", "offer_letter", "technical_proposal"):
             flags.append(f"file name says {f.id_in_name}")
