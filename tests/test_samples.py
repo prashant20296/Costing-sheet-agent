@@ -81,3 +81,13 @@ def test_find_files_skips_lock_files():
     folder = _first("UEM_11731*Costing*.xlsx").parent
     costing, offers = find_files(folder)
     assert len(costing) == 1 and not costing[0].name.startswith("~$")
+
+
+def test_13091_matrix_total_with_markup_and_total_weight_column():
+    s = next(x for x in parse_workbook(_first("UEM_13091*R1*Costing*.xlsx")).scenarios if x.layout == "matrix")
+    assert s.final_total == pytest.approx(432510.87, abs=0.01)
+    assert s.totals["subtotal_cost"] == pytest.approx(413095.38, abs=0.01)
+    assert s.totals["markup_on_direct_pct"] == pytest.approx(4.7, abs=0.01)
+    assert s.total_weight_kg == pytest.approx(63156)
+    assert not any(l.category == "final_total" for l in s.lines)
+    assert "Total Weight" not in {l.component for l in s.lines}

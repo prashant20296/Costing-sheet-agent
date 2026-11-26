@@ -254,7 +254,8 @@ def _find_matrix_header(rows: list[Row]) -> tuple[int, int, dict[int, str], int 
         size = next((c for c in row.values() if c.is_text and re.fullmatch(r"size\s*:?", c.text.lower())), None)
         if not size:
             continue
-        comps = {c.col: c.text for c in row.values() if c.is_text and c.col > size.col and c.text.lower() != "m2"}
+        comps = {c.col: c.text for c in row.values() if c.is_text and c.col > size.col and c.text.lower() != "m2"
+                 and not re.search(r"total", c.text.lower())}   # 'Total Weight' column is not a component
         area = next((c.col for c in row.values() if c.is_text and c.text.lower() in ("m2", "m\u00b2")), None)
         if len(comps) >= 2:
             return i, size.col, comps, area
@@ -370,6 +371,12 @@ def parse_matrix_sheet(sheet: str, rows: list[Row], hdr) -> Scenario:
                     ctx["allowance_row"], ctx["allowance"] = next(iter(vals.values())).row, round(ratios[0], 3)
                     continue
             if area_col and area_col in row and row[area_col].is_num and len(vals) >= 2:
+                if ctx.get("final_from_unlabelled"):
+                    sc.warnings.append(f"{row[area_col].coord}: numeric row after the final total (scratch?)")
+                    continue
+                if "final_total" in sc.totals:      # labelled total above, this row is total + markup
+                    sc.totals["subtotal_cost"] = sc.totals["final_total"]
+                ctx["final_from_unlabelled"] = True
                 sc.totals["final_total"] = float(row[area_col].value)
                 after = [c for col, c in sorted(row.items()) if col > area_col and c.is_num]
                 if after:
@@ -384,6 +391,13 @@ def parse_matrix_sheet(sheet: str, rows: list[Row], hdr) -> Scenario:
             sc.options.append(Option(lab.text, float(nums[0].value), float(nums[1].value), float(nums[2].value), lab.row))
             continue
         cat = classify_label(lab.text)
+        if cat in TOTAL_KINDS:               # 'Total price in AED' row: a total, not a cost line
+            tot = _num(row, area_col) if area_col else None
+            if tot is None:
+                tot = sum(float(v.value) for v in vals.values() if v.is_num) or None
+            if tot is not None:
+                sc.totals[cat] = tot
+            continue
         ctx["cost_rows"][lab.row] = cat or lab.text
         for name, cell in vals.items():
             if cell.is_num:
@@ -402,7 +416,11 @@ def _matrix_checks(sc: Scenario, comps: dict[int, str], comp_totals: dict[str, f
     with_mat = sc.direct_cost()
     without_mat = sum(l.amount or 0 for l in sc.lines if l.category not in ("margin", "contingency", "material"))
     ft = sc.totals.get("final_total")
-    if ft:
+    ref = sc.totals.get("subtotal_cost") or ft
+    if ft and sc.totals.get("subtotal_cost"):
+        sc.totals["markup_on_direct_pct"] = round((ft / sc.totals["subtotal_cost"] - 1) * 100, 2)
+    if ref:
+        ft = ref
         if abs(with_mat - ft) / ft < 0.001:
             sc.scope["materials"] = "supplied"
         elif abs(without_mat - ft) / ft < 0.001:

@@ -23,6 +23,7 @@ src/costing_agent/
   offer_reader.py   .docx/.doc/.pdf offer -> items, terms, exclusions
   reconcile.py      costing <-> offer matching, identifier checks
   report.py         CSV/JSON + parse_report.md
+  manifest.py       inventory workbook + folders -> manifest_inquiries.csv / manifest_files.csv
   cli.py            costing-agent parse / parse-folder
 tests/
 data/raw/           customer files (git-ignored)
@@ -38,9 +39,23 @@ costing-agent parse --costing data/raw/12686/UEM_12686_2025_R0_-_Costing_Sheet.x
 # or let it find the files in an inquiry folder
 costing-agent parse-folder data/raw/12686 --out data/interim
 
-COSTING_SAMPLES=../docs/Structural pytest     # sample-based tests (searches sub-folders)
+# whole package: manifest from the inventory workbook + local folders, then batch parse
+costing-agent manifest --inventory ../training_data_inventory_all_years.xlsx                        --roots D:/Costing_sheet/docs/Structural --package 8 --out data/interim/manifest_pkg8
+costing-agent parse-manifest data/interim/manifest_pkg8/manifest_inquiries.csv --out data/interim/batch_pkg8
+costing-agent parse-manifest ... --only 13091 12960          # re-run some; other summary rows are kept
+
+COSTING_SAMPLES=D:/Costing_sheet/docs/Structural pytest      # sample-based tests (searches sub-folders)
 ```
 `.doc` offers need LibreOffice (`soffice` on PATH or the default Windows install folder), or save them as `.docx`.
+
+## Manifest
+`manifest_inquiries.csv`: one row per inquiry: inventory fields, SharePoint link, `source`
+(local / sharepoint_only / missing), file counts, chosen `primary_costing` / `primary_offer`
+(latest revision, then own inquiry id, then .docx > .pdf > .doc), `parse_ready`, flags
+(costing/offer named for another inquiry, revision mismatch, malformed id, guessed costing).
+`manifest_files.csv`: one row per file with a file-name label (`label_source = filename`; the content
+classifier replaces it later). `batch_summary.csv`: one row per parsed inquiry with totals, offer
+match and flag counts.
 
 ## Outputs (per inquiry)
 `<id>_parse_report.md`, `<id>.json`, `<id>_cost_lines.csv`, `<id>_boq_lines.csv`,
@@ -51,6 +66,8 @@ COSTING_SAMPLES=../docs/Structural pytest     # sample-based tests (searches sub
   New layouts show up as `other` or as `unmapped label` flags; add synonyms in `categories.py`.
 - Offer reading needs a price table with Description and Qty columns.
 - Drawings, MTO files and weight workbooks are not parsed yet.
+- Not yet supported: priced client schedules (Unit / Total Qty / U-Rate / Amount, e.g. 12783) and
+  block-per-item costing tabs; such inquiries show 0 costed tabs in batch_summary.csv.
 - Matrix layouts: basis and rate are read from each cell's formula (`=E10*2.8` per kg, `=E14*10%` pct,
   `=I10*120` per m2, `=750*6` per unit). Typed values or other formulas stay `component_total`.
 - Offer items carry `table_no`; reports show them as `T<table>/<item>` because each scope item often

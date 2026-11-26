@@ -53,9 +53,10 @@ def _find_soffice() -> str | None:
     if found:
         return found
     for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("ProgramFiles(x86)", "")):
-        p = Path(base) / "LibreOffice" / "program" / "soffice.exe"
-        if base and p.is_file():
-            return str(p)
+        for exe in ("soffice.com", "soffice.exe"):     # .com is the console build: it waits and reports
+            p = Path(base) / "LibreOffice" / "program" / exe
+            if base and p.is_file():
+                return str(p)
     return None
 
 
@@ -63,10 +64,23 @@ def _convert_doc(path: Path) -> Path:
     soffice = _find_soffice()
     if not soffice:
         raise RuntimeError("LibreOffice is needed to read .doc files (or save the file as .docx)")
-    out = Path(tempfile.mkdtemp())
-    subprocess.run([soffice, "--headless", "--convert-to", "docx", "--outdir", str(out), str(path)],
-                   check=True, capture_output=True)
-    return out / (path.stem + ".docx")
+    work = Path(tempfile.mkdtemp(prefix="costing_doc_"))
+    src = work / "offer.doc"                 # plain name: real names hold '..' and spaces
+    shutil.copyfile(path, src)
+    # own, reused profile so a running LibreOffice cannot swallow the job; a brand-new profile
+    # only initialises on the first launch and converts nothing, hence one retry
+    profile = (Path(tempfile.gettempdir()) / "costing_agent_lo_profile").as_uri()
+    cmd = [soffice, f"-env:UserInstallation={profile}", "--headless", "--norestore", "--nologo",
+           "--convert-to", "docx:MS Word 2007 XML", "--outdir", str(work), str(src)]
+    out = work / "offer.docx"
+    for _ in range(2):
+        try:
+            subprocess.run(cmd, capture_output=True, timeout=180)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"LibreOffice timed out converting {path.name}") from None
+        if out.is_file():
+            return out
+    raise RuntimeError(f"LibreOffice produced no .docx for {path.name}")
 
 
 def _read_docx(path: Path) -> tuple[str, list[list[list[str]]]]:
