@@ -47,7 +47,7 @@ from costing_agent.manifest import role_from
     ("bom", "BOM.xlsx", "customer_input"),
     ("drawing", "SR-231018-POLE-GA-001.pdf", "customer_input"),
     ("other", "RFQ docs.zip", "customer_input"),
-    ("weight_workbook", "LOT-4 Instrument supports weightage WORKING.xlsx", "check"),
+    ("weight_workbook", "LOT-4 Instrument supports weightage WORKING.xlsx", "customer_input"),
 ])
 def test_role_from(label, name, role):
     assert role_from(label, name) == role

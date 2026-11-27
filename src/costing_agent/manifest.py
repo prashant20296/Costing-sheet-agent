@@ -151,8 +151,7 @@ def role_from(label: str, name: str) -> str:
     """Who made the file: UEM's own output, or the customer's input (everything else)."""
     if label in UEM_OUTPUT:
         return "uem_output"
-    if re.search(r"working", name, re.I):
-        return "check"          # may be UEM's own working file: keep it out of the inputs until confirmed
+    
     return "customer_input"
 
 def scan_folder(inquiry_id: str, folder: Path) -> list[FileRow]:
