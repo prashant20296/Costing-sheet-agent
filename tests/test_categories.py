@@ -52,3 +52,27 @@ def test_offer_header_cols_with_merged_columns():
     items, grands = _price_items([table])
     assert items[0].qty == 8 and items[0].description == "Module Support: Supply and HDG"
     assert grands == [49800.0]
+
+from costing_agent.offer_reader import _price_items
+
+
+def _row(s: str) -> list[str]:
+    """Turn 'a | b | c' into ['a', 'b', 'c'], the way show_offer_tables prints a row."""
+    return [c.strip() for c in s.split("|")]
+
+
+def test_price_items_header_shifted_one_cell():
+    # seen in 12021/12022: the header row has one extra leading cell, so data sits one cell left
+    t = [
+        _row(" | # |  |  | Description |  |  | Qty. |  |  | Unit |  |  | Unit Price|  |  | Total Price | "),
+        _row("1 |  |  | Panel structure A |  |  | 1 |  |  | Set |  |  | AED6,941.00 |  |  | AED 6,941.00 |  | "),
+        _row("2 |  |  | Panel structure B |  |  | 2 |  |  | Sets |  |  | AED 9,293.00 |  |  | AED 18,586.00 |  | "),
+        _row("Grand Total Price |  |  |  |  |  |  |  |  |  |  |  |  |  |  | AED 25,527.00 |  | "),
+    ]
+    items, grands = _price_items([t])
+    assert [i.total for i in items] == [6941.0, 18586.0]
+    assert [i.qty for i in items] == [1.0, 2.0]
+    assert [i.rate for i in items] == [6941.0, 9293.0]
+    assert [i.item_no for i in items] == ["1", "2"]
+    assert items[0].description == "Panel structure A"
+    assert grands == [25527.0]

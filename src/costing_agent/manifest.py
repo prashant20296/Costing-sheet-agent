@@ -73,6 +73,7 @@ class FileRow:
     rev: int | None = None
     id_in_name: str | None = None
     flags: str = ""
+    role: str = ""
 
 
 @dataclass
@@ -143,6 +144,16 @@ def read_inventory(path: str | Path, package_prefix: str | None = None) -> dict[
             out[row.inquiry_id] = row
     return out
 
+UEM_OUTPUT = {"costing_sheet", "offer_letter", "technical_proposal"}
+
+
+def role_from(label: str, name: str) -> str:
+    """Who made the file: UEM's own output, or the customer's input (everything else)."""
+    if label in UEM_OUTPUT:
+        return "uem_output"
+    if re.search(r"working", name, re.I):
+        return "check"          # may be UEM's own working file: keep it out of the inputs until confirmed
+    return "customer_input"
 
 def scan_folder(inquiry_id: str, folder: Path) -> list[FileRow]:
     rows = []
@@ -159,6 +170,7 @@ def scan_folder(inquiry_id: str, folder: Path) -> list[FileRow]:
         )
         if f.label == "other" and ext in (".xlsx", ".xlsm") and re.search(r"costing", p.parent.name, re.I):
             f.label, f.label_source = "costing_sheet", "folder_name"
+        f.role = role_from(f.label, f.name)
         flags = []
         if f.id_in_name and f.id_in_name != inquiry_id and f.label in ("costing_sheet", "offer_letter", "technical_proposal"):
             flags.append(f"file name says {f.id_in_name}")

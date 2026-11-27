@@ -123,6 +123,15 @@ def _header_cols(row: list[str]) -> dict[str, int] | None:
 def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
 
+def _shift(rows: list[list[str]], tc: int) -> int:
+    """PDF-to-Word tables can put data one cell left or right of its header.
+    Return the offset that puts a number under the Total heading."""
+    for r in rows:
+        for off in (0, -1, 1):
+            j = tc + off
+            if 0 <= j < len(r) and _to_float(r[j]) is not None:
+                return off
+    return 0
 
 def _price_items(tables: list[list[list[str]]]) -> tuple[list[OfferItem], list[float]]:
     items, grands = [], []
@@ -134,6 +143,9 @@ def _price_items(tables: list[list[list[str]]]) -> tuple[list[OfferItem], list[f
         i0, cols = hdr
         qc, tc = cols["qty"], cols.get("total", len(t[i0]) - 1)
         rc, ic = cols.get("rate"), cols.get("item", 0)
+        off = _shift(t[i0 + 1:], tc)
+        qc, tc, ic = qc + off, tc + off, max(ic + off, 0)
+        rc = rc + off if rc is not None else None
         current: OfferItem | None = None
         for r in t[i0 + 1:]:
             get = lambda i: r[i] if i is not None and i < len(r) else ""

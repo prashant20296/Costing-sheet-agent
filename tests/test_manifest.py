@@ -37,3 +37,17 @@ def _f(name, rev, ext=".docx", mod="2025-01-01", id_="12000"):
 def test_pick_latest_rev_then_own_id_then_format():
     files = [_f("a", 0), _f("b", 2, ".pdf"), _f("c", 2, ".docx", id_="11413"), _f("d", 2, ".docx")]
     assert _pick(files, "offer_letter", "12000", {".docx": 0, ".pdf": 1, ".doc": 2}).name == "d"
+from costing_agent.manifest import role_from
+
+
+@pytest.mark.parametrize("label, name, role", [
+    ("costing_sheet", "UEM_11881_2024_R0 - Costing Sheet.xlsx", "uem_output"),
+    ("offer_letter", "UEM_11881_2024_R0 - Techno Commercial Proposal.doc", "uem_output"),
+    ("technical_proposal", "UEM_12016_2024_R0 - Technical Proposal.doc", "uem_output"),
+    ("bom", "BOM.xlsx", "customer_input"),
+    ("drawing", "SR-231018-POLE-GA-001.pdf", "customer_input"),
+    ("other", "RFQ docs.zip", "customer_input"),
+    ("weight_workbook", "LOT-4 Instrument supports weightage WORKING.xlsx", "check"),
+])
+def test_role_from(label, name, role):
+    assert role_from(label, name) == role
